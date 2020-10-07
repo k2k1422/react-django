@@ -2,18 +2,32 @@ import { combineReducers } from "redux";
 import { connectRouter } from "connected-react-router";
 import auth from "./auth";
 import persist from "./persist";
-import databaseConnection from "./databaseConnection";
 import alert from "./alert";
-import dataMapping from "./dataMapping";
-import dataMappingList from "./dataMappingList";
+import * as authActions from "../actions/auth";
 
-export default (history) =>
+
+const appReducer = (history) =>
   combineReducers({
     alert: alert,
     auth: auth,
     persist: persist,
-    databaseConnection: databaseConnection,
     router: connectRouter(history),
-    dataMapping: dataMapping,
-    dataMappingList: dataMappingList,
   });
+
+  
+const rootReducer = (history) => (state, action) => {
+  if (
+    action.type === authActions.LOGOUT ||
+    action.type === "RESET_REDUX_STORE"
+  ) {
+    state = {
+      // ...appReducer(history)(undefined, {}),
+      auth: { ...auth(undefined, {}), logout: true },
+      persist: { persistStatus: true },
+    };
+  }
+  return appReducer(history)(state, action);
+};
+
+export default rootReducer;
+

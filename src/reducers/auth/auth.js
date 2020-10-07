@@ -1,118 +1,94 @@
-/* eslint-disable default-case */
-import produce from "immer"
-import * as auth from "../../actions/auth"
-
+import jwtDecode from "jwt-decode";
+import * as auth from "../../actions/auth";
 const initialState = {
-    uid: undefined,
-    access: undefined,
-    refresh: undefined,
-    activity: undefined,
-    errors: {},
-    resetPassword: undefined,
-    newPassword: undefined,
-    userName:undefined,
-    logout: undefined
+  access: undefined,
+  refresh: undefined,
+  errors: {},
+  logout: undefined,
+  user_meta_data: undefined
+};
+export default (state = initialState, action) => {
+  switch (action.type) {
+    case auth.LOGIN_SUCCESS:
+      return {
+        access: {
+          token: action.payload.access,
+          ...jwtDecode(action.payload.access),
+        },
+        refresh: {
+          token: action.payload.refresh,
+          ...jwtDecode(action.payload.refresh),
+        },
+        errors: {},
+        logout: false
+      };
+    case auth.TOKEN_RECEIVED:
+      return {
+        ...state,
+        access: {
+          token: action.payload.access,
+          ...jwtDecode(action.payload.access),
+        },
+      };
+    case auth.LOGIN_FAILURE:
+    case auth.TOKEN_FAILURE:
+      return {
+        access: undefined,
+        refresh: undefined,
+        errors: action.payload.response || {
+          non_field_errors: action.payload.statusText,
+        },
+      };
+      case auth.USER_META_DATA_RECEIVED:
+      return {
+        ...state,
+        user_meta_data: action.payload.data 
+      };
+    default:
+      return state;
+  }
+};
+
+export function getAccessToken(state) {
+  if (state.access) {
+    return state.access.token;
+  }
 }
 
-export default produce(
-    (draftState, action) => {
-        switch (action.type) {
-            case auth.LOGIN_SUCCESS:
-                draftState.uid = action.payload.data.uid
-                draftState.access = {
-                    token: action.payload.data.access_token,
-                    expiryTime: action.payload.data.access_token_expiry_time
-                }
-                draftState.refresh = {
-                    token: action.payload.data.refresh_token,
-                    expiryTime: action.payload.data.refresh_token_expiry_time
-                }
-                draftState.activity = action.payload.data.activity
-                draftState.errors = {}
-                draftState.userName = action.payload.data.user_name
-                draftState.logout = false
-                break
-
-            case auth.TOKEN_RECEIVED:
-                draftState.access = {
-                    token: action.payload.data.access_token,
-                    expiryTime: action.payload.data.access_token_expiry_time
-                }
-                break
-
-            case auth.LOGOUT:
-                draftState.uid = undefined
-                draftState.access = undefined
-                draftState.refresh = undefined
-                draftState.activity = undefined
-                draftState.errors = { }
-                draftState.resetPassword = undefined
-                draftState.newPassword = undefined
-                draftState.userName = undefined
-                draftState.logout = true
-                break
-            case auth.LOGIN_FAILURE:
-            case auth.TOKEN_FAILURE:
-                draftState.access = undefined
-                draftState.refresh = undefined
-                draftState.errors = action.payload.response ||
-                    { 'non_field_errors': action.payload.statusText }
-                break
-        }
-
-    }, initialState
-)
-
-export const getAccessToken = (state) => {
-    if (state.access) {
-        return state.access.token
-    }
+export function getRefreshToken(state) {
+  if (state.refresh) {
+    return state.refresh.token;
+  }
 }
 
-export const getRefreshToken = (state) => {
-    if (state.refresh) {
-        return state.refresh.token
-    }
+export function isAccessTokenExpired(state) {
+  if (state.access && state.access.exp) {
+    return 1000 * state.access.exp - new Date().getTime() < 5000;
+  }
+  return true;
 }
-
-export const isAccessTokenExpired = (state) => {
-    if (state.access && state.access.expiryTime) {
-        return 1000 * state.access.expiryTime - (new Date()).getTime() < 5000
-    }
-    return true
+export function isRefreshTokenExpired(state) {
+  if (state.refresh && state.refresh.exp) {
+    return 1000 * state.refresh.exp - new Date().getTime() < 5000;
+  }
+  return true;
 }
-
-export const isRefreshTokenExpired = (state) => {
-    if (state.refresh && state.refresh.expiryTime) {
-        return (new Date()).getTime() > state.refresh.expiryTime * 1000
-    }
-    return true
+export function isAuthenticated(state) {
+  return !isRefreshTokenExpired(state);
 }
-
-export const isAuthenticated = (state) => {
-    return !isRefreshTokenExpired(state)
+export function getUserID(state) {
+  if (state.access) {
+    return state.access.user_id;
+  }
+  return null;
 }
-
-export const getUserID = (state) => (
-    state.uid
-)
-
-export const getUserName = (state) => (
-    state.userName
-)
-
-export const getErrors = (state) => (
-    state.errors
-)
-
-export const getResetPasswordStatus = (state) => {
-    return state.resetPassword
+export function getErrors(state) {
+  return state.errors;
 }
-
-export const getSetNewPasswordStatus = (state) => {
-    return state.newPassword
-}
-
 export const getLogoutStatus = (state) => {
-    return state.logout
+  return state.logout
+}
+
+export const getUserMetaData = state => {
+  return state.user_meta_data
 }
